@@ -1,0 +1,534 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+  - name: tcg
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /tcg/players:
+    post:
+      operationId: registerPlayer
+      tags: [tcg]
+      summary: Register a new TCG player and grant starter cards
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterPlayerRequest"
+      responses:
+        "200":
+          description: Registered player state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameState"
+  /tcg/auth/login:
+    post:
+      operationId: loginPlayer
+      tags: [tcg]
+      summary: Login an existing TCG player with username and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginPlayerRequest"
+      responses:
+        "200":
+          description: Authenticated player state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameState"
+  /tcg/players/{playerId}/state:
+    get:
+      operationId: getPlayerState
+      tags: [tcg]
+      summary: Get player profile, cards, friends, rooms, tournaments and active match
+      parameters:
+        - $ref: "#/components/parameters/PlayerId"
+      responses:
+        "200":
+          description: Player game state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameState"
+  /tcg/players/{playerId}/deck:
+    put:
+      operationId: updateDeck
+      tags: [tcg]
+      summary: Update the six-card battle deck
+      parameters:
+        - $ref: "#/components/parameters/PlayerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDeckRequest"
+      responses:
+        "200":
+          description: Updated game state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameState"
+  /tcg/players/{playerId}/friends:
+    post:
+      operationId: addFriend
+      tags: [tcg]
+      summary: Add a friend by player code or name
+      parameters:
+        - $ref: "#/components/parameters/PlayerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddFriendRequest"
+      responses:
+        "200":
+          description: Updated game state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameState"
+  /tcg/players/{playerId}/friends/{friendId}:
+    delete:
+      operationId: removeFriend
+      tags: [tcg]
+      summary: Remove a friend
+      parameters:
+        - $ref: "#/components/parameters/PlayerId"
+        - name: friendId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated game state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameState"
+  /tcg/rooms:
+    post:
+      operationId: createRoom
+      tags: [tcg]
+      summary: Create an online versus room
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoomRequest"
+      responses:
+        "200":
+          description: Created room
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Room"
+  /tcg/rooms/{roomId}/join:
+    post:
+      operationId: joinRoom
+      tags: [tcg]
+      summary: Join a waiting room and start a match if possible
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinRoomRequest"
+      responses:
+        "200":
+          description: Updated game state with match if started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameState"
+  /tcg/tournaments:
+    post:
+      operationId: createTournament
+      tags: [tcg]
+      summary: Open a tournament lobby
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTournamentRequest"
+      responses:
+        "200":
+          description: Created tournament
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tournament"
+  /tcg/tournaments/{tournamentId}/join:
+    post:
+      operationId: joinTournament
+      tags: [tcg]
+      summary: Join a tournament
+      parameters:
+        - name: tournamentId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinTournamentRequest"
+      responses:
+        "200":
+          description: Updated game state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameState"
+  /tcg/matches/{matchId}/action:
+    post:
+      operationId: playMatchAction
+      tags: [tcg]
+      summary: Execute a turn-based combat action
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MatchActionRequest"
+      responses:
+        "200":
+          description: Updated match
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Match"
+components:
+  parameters:
+    PlayerId:
+      name: playerId
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+    RegisterPlayerRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 3
+        password:
+          type: string
+          minLength: 8
+        displayName:
+          type: string
+          minLength: 3
+        region:
+          type: string
+      required: [username, password, displayName]
+    LoginPlayerRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 3
+        password:
+          type: string
+          minLength: 8
+      required: [username, password]
+    UpdateDeckRequest:
+      type: object
+      properties:
+        playerCardIds:
+          type: array
+          minItems: 6
+          maxItems: 6
+          items:
+            type: string
+      required: [playerCardIds]
+    AddFriendRequest:
+      type: object
+      properties:
+        query:
+          type: string
+          minLength: 2
+      required: [query]
+    CreateRoomRequest:
+      type: object
+      properties:
+        playerId:
+          type: string
+        name:
+          type: string
+        isRanked:
+          type: boolean
+      required: [playerId, name]
+    JoinRoomRequest:
+      type: object
+      properties:
+        playerId:
+          type: string
+      required: [playerId]
+    CreateTournamentRequest:
+      type: object
+      properties:
+        playerId:
+          type: string
+        name:
+          type: string
+        capacity:
+          type: integer
+          minimum: 4
+          maximum: 32
+      required: [playerId, name, capacity]
+    JoinTournamentRequest:
+      type: object
+      properties:
+        playerId:
+          type: string
+      required: [playerId]
+    MatchActionRequest:
+      type: object
+      properties:
+        playerId:
+          type: string
+        actorInstanceId:
+          type: string
+        targetInstanceId:
+          type: string
+        actionType:
+          type: string
+          enum: [attack, protect, heal, steal, empower, elemental]
+      required: [playerId, actorInstanceId, actionType]
+    Player:
+      type: object
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+        playerCode:
+          type: string
+        region:
+          type: string
+        wins:
+          type: integer
+        losses:
+          type: integer
+        rankPoints:
+          type: integer
+        rankTitle:
+          type: string
+        createdAt:
+          type: string
+      required: [id, displayName, playerCode, wins, losses, rankPoints, rankTitle, createdAt]
+    Card:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [centinela, caballero, infanteria, curador, saqueador, artefacto, hechizo, piedra]
+        element:
+          type: string
+        rarity:
+          type: string
+        attack:
+          type: integer
+        defense:
+          type: integer
+        health:
+          type: integer
+        cost:
+          type: integer
+        effect:
+          type: string
+      required: [id, name, role, rarity, attack, defense, health, cost, effect]
+    PlayerCard:
+      type: object
+      properties:
+        id:
+          type: string
+        card:
+          $ref: "#/components/schemas/Card"
+        inDeck:
+          type: boolean
+      required: [id, card, inDeck]
+    Friend:
+      type: object
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+        playerCode:
+          type: string
+        rankTitle:
+          type: string
+      required: [id, displayName, playerCode, rankTitle]
+    Room:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        hostPlayerId:
+          type: string
+        guestPlayerId:
+          type: string
+        status:
+          type: string
+        isRanked:
+          type: boolean
+        createdAt:
+          type: string
+      required: [id, name, hostPlayerId, status, isRanked, createdAt]
+    Tournament:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        hostPlayerId:
+          type: string
+        capacity:
+          type: integer
+        status:
+          type: string
+        participants:
+          type: integer
+        createdAt:
+          type: string
+      required: [id, name, hostPlayerId, capacity, status, participants, createdAt]
+    CombatCard:
+      type: object
+      properties:
+        instanceId:
+          type: string
+        ownerId:
+          type: string
+        cardName:
+          type: string
+        role:
+          type: string
+        attack:
+          type: integer
+        defense:
+          type: integer
+        health:
+          type: integer
+        maxHealth:
+          type: integer
+        charges:
+          type: integer
+        shield:
+          type: integer
+        defeated:
+          type: boolean
+      required: [instanceId, ownerId, cardName, role, attack, defense, health, maxHealth, charges, shield, defeated]
+    Match:
+      type: object
+      properties:
+        id:
+          type: string
+        roomId:
+          type: string
+        playerOneId:
+          type: string
+        playerTwoId:
+          type: string
+        currentTurnPlayerId:
+          type: string
+        turnNumber:
+          type: integer
+        status:
+          type: string
+        winnerPlayerId:
+          type: string
+        log:
+          type: array
+          items:
+            type: string
+        battlefield:
+          type: array
+          items:
+            $ref: "#/components/schemas/CombatCard"
+      required: [id, playerOneId, playerTwoId, currentTurnPlayerId, turnNumber, status, log, battlefield]
+    GameState:
+      type: object
+      properties:
+        player:
+          $ref: "#/components/schemas/Player"
+        collection:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerCard"
+        friends:
+          type: array
+          items:
+            $ref: "#/components/schemas/Friend"
+        rooms:
+          type: array
+          items:
+            $ref: "#/components/schemas/Room"
+        tournaments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Tournament"
+        activeMatch:
+          oneOf:
+            - $ref: "#/components/schemas/Match"
+            - type: "null"
+        activity:
+          type: array
+          items:
+            type: string
+      required: [player, collection, friends, rooms, tournaments, activity]
